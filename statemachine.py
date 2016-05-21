@@ -61,7 +61,7 @@ class StateMachine:
         self._state_table[event][state] = response
 
     def run(self):
-        for event in self._event_source:
+        for event, parameters in self._event_source:
             next_state, event_handler, event_ignore = self._state_table.get(event).get(self._current_state)
             if event_handler:
                 if event_ignore and event_ignore():  # event_ignore function supplied which returns True
