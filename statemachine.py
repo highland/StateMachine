@@ -74,5 +74,5 @@ class StateMachine(State):
                 self._current_state.do_entry()
             if self._current_state.is_end_state:
                 break
-        if _end_action:
-            _end_action()
+        if self._end_action:
+            self._end_action()
