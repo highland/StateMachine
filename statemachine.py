@@ -39,11 +39,13 @@ Response = namedtuple('Response', 'next_state, action, guard_condition')
 class StateMachine(State):
     def __init__(self,
                  event_source: Iterable[Event],
-                 start_state: State = State('start')
+                 start_state: State = State('start'),
+                 end_action: Callable = None
                  ):
         super().__init__()
         self._event_source = event_source
         self._current_state = start_state
+        self._end_action = end_action
         self._states = {start_state}    # type: Set[State]
         self._state_table = {}  # type: Dict[Event, Dict[State, Response]]
         self._machine_data = {}  # data used by actions and event ignore functions
@@ -72,3 +74,5 @@ class StateMachine(State):
                 self._current_state.do_entry()
             if self._current_state.is_end_state:
                 break
+        if _end_action:
+            _end_action()
