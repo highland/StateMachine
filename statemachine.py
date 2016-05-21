@@ -33,10 +33,10 @@ class State:
 
 Event = str
 
-Response = namedtuple('Response', 'next_state, event_handler, event_ignore')
+Response = namedtuple('Response', 'next_state, action, guard_condition')
 
 
-class StateMachine:
+class StateMachine(State):
     def __init__(self,
                  event_source: Iterable[Event],
                  start_state: State = State('start')
@@ -46,7 +46,7 @@ class StateMachine:
         self._current_state = start_state
         self._states = {start_state}    # type: Set[State]
         self._state_table = {}  # type: Dict[Event, Dict[State, Response]]
-        self._machine_data = {}  # data used by event handlers and event ignore functions
+        self._machine_data = {}  # data used by actions and event ignore functions
 
     def add_state(self, state: State):
         self._states.add(state)
@@ -62,13 +62,13 @@ class StateMachine:
 
     def run(self):
         for event, parameters in self._event_source:
-            next_state, event_handler, event_ignore = self._state_table.get(event).get(self._current_state)
-            if event_handler:
-                if event_ignore and event_ignore():  # event_ignore function supplied which returns True
+            next_state, action, guard_condition = self._state_table.get(event).get(self._current_state)
+            if action:
+                if guard_condition and guard_condition():  # guard_condition function supplied which returns True
                     continue
                 self._current_state.do_exit()
                 self._current_state = next_state
-                event_handler()
+                action(parameters)
                 self._current_state.do_entry()
             if self._current_state.is_end_state:
                 break
