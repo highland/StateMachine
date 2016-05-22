@@ -1,6 +1,12 @@
+"""
+    A full-featured framework for a Finite State Machine written in python.
+    Inspired by "A Crash Course in UML State Machines" by Miro Samek, Quantum Leaps, LLC.
+    https://classes.soe.ucsc.edu/cmpe013/Spring11/LectureNotes/A_Crash_Course_in_UML_State_Machines.pdf
+"""
 from typing import Iterable, Callable, Dict, Set, NamedTuple
 
 
+# noinspection PyCallingNonCallable
 class State:
     """
     A State (an extended state) captures an aspect of the system's history
@@ -21,12 +27,10 @@ class State:
 
     def do_entry(self):
         if self._entry_action:
-            # noinspection PyCallingNonCallable,PyCallingNonCallable,PyCallingNonCallable
             self._entry_action()
 
     def do_exit(self):
         if self._exit_action:
-            # noinspection PyCallingNonCallable,PyCallingNonCallable
             self._exit_action()
 
     def __eq__(self, other):
@@ -36,7 +40,8 @@ class State:
         return 'State object named {0}.'.format(self.name)
 
 
-Event = str  # type alias:  Event is represented by a string
+Event = str
+""" type alias:  Event is represented by a string """
 
 Response = NamedTuple('Response',
                       [('next_state', State), ('action', Callable[..., None]),
@@ -99,3 +104,7 @@ class StateMachine(State):
                 break
         if self._end_action:
             self._end_action()
+
+    def __repr__(self):
+        return 'Finite State Machine object named {0}.'.format(self.name)
+
