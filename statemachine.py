@@ -72,7 +72,10 @@ class StateMachine(State):
         self._end_action = end_action
         self._states = {initial_state}  # type: Set[State]
         self._state_table = {}  # type: Dict[Event, Dict[State, Response]]
-        self._machine_data = {}  # data used by actions and event ignore functions
+        """ Miro doesn't like this way of umplementing state macnines -
+            perhaps each state should maintain it's own event/response dict?
+        """
+        self._extended_state = {}  # data used by actions and event ignore functions
 
     def add_state(self, state: State):
         self._states.add(state)
