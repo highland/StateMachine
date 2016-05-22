@@ -41,8 +41,19 @@ class State:
     def add_response(self, event: Event, response: Response):
         self._responses[event] = response
 
-    def get_response(self, event: Event):
-        return self._responses.get(event)
+    def handle_event(self, event: Event, *parameters) -> 'State':
+        required_response = self._responses.get(event)
+        if not required_response:
+            return None
+        next_state, action, guard_condition = required_response
+        if guard_condition and not guard_condition():  # guard_condition function supplied which returns False
+            return None
+        if self._exit_action:
+            self._exit_action()
+        if action:
+            action(event, parameters)
+        next_state.do_entry()
+        return next_state
 
     def do_entry(self):
         if self._entry_action:
@@ -86,19 +97,10 @@ class StateMachine(State):
     def run(self):
         if self._initial_action:
             self._initial_action()
-        for event, parameters in self._event_source:
-            required_response = self._current_state.get_response(event)
-            if required_response:
-                next_state, action, guard_condition = required_response
-                if guard_condition and not guard_condition():  # guard_condition function supplied which returns False
-                    continue
-                self._current_state.do_exit()
-                if next_state not in self._states:
-                    raise RuntimeWarning('State transition to unregistered state: ' + next_state)
+        for event_data in self._event_source:    # RTC (Run-to-Completion) Execution Model
+            next_state = self._current_state.handle_event(*event_data)
+            if next_state:
                 self._current_state = next_state
-                if action:
-                    action(parameters)
-                self._current_state.do_entry()
             if self._current_state.is_end_state:
                 break
         if self._end_action:
