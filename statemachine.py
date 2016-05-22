@@ -6,6 +6,18 @@
 from typing import Iterable, Callable, Dict, Set, NamedTuple
 
 
+Event = str
+""" type alias:  Event is represented by a string """
+
+Response = NamedTuple('Response',
+                      [('next_state', 'State'), ('action', Callable[..., None]),
+                       ('guard_condition', Callable[..., bool])])
+"""
+    action may optionally take parameters supplied with the event
+    guard_condition should return False if the transition is to be disabled
+"""
+
+
 # noinspection PyCallingNonCallable
 class State:
     """
@@ -24,6 +36,13 @@ class State:
         self._entry_action = entry_action
         self._exit_action = exit_action
         self.is_end_state = end_state
+        self._responses = {}    # type: Dict[Event, Response]
+
+    def add_response(self, event: Event, response: Response):
+        self._responses[event] = response
+
+    def get_response(self, event: Event):
+        return self._responses.get(event)
 
     def do_entry(self):
         if self._entry_action:
@@ -38,18 +57,6 @@ class State:
 
     def __repr__(self):
         return 'State object named {0}.'.format(self.name)
-
-
-Event = str
-""" type alias:  Event is represented by a string """
-
-Response = NamedTuple('Response',
-                      [('next_state', State), ('action', Callable[..., None]),
-                       ('guard_condition', Callable[..., bool])])
-"""
-    action may optionally take parameters supplied with the event
-    guard_condition should return False if the transition is to be disabled
-"""
 
 
 # noinspection PyCallingNonCallable
@@ -71,34 +78,23 @@ class StateMachine(State):
         self._initial_action = initial_action
         self._end_action = end_action
         self._states = {initial_state}  # type: Set[State]
-        self._state_table = {}  # type: Dict[Event, Dict[State, Response]]
-        """ Miro doesn't like this way of umplementing state macnines -
-            perhaps each state should maintain it's own event/response dict?
-        """
         self._extended_state = {}  # data used by actions and event ignore functions
 
-    def add_state(self, state: State):
+    def register_state(self, state: State):
         self._states.add(state)
-
-    def add_event(self, event: Event):
-        if event not in self._state_table:
-            self._state_table[event] = {}  # Dict[State, Response]
-
-    def add_table_entry(self, event: Event, state: State, response: Response):
-        self.add_event(event)
-        self.add_state(state)
-        self._state_table[event][state] = response
 
     def run(self):
         if self._initial_action:
             self._initial_action()
         for event, parameters in self._event_source:
-            required_response = self._state_table.get(event).get(self._current_state)
+            required_response = self._current_state.get_response(event)
             if required_response:
                 next_state, action, guard_condition = required_response
                 if guard_condition and not guard_condition():  # guard_condition function supplied which returns False
                     continue
                 self._current_state.do_exit()
+                if next_state not in self._states:
+                    raise RuntimeWarning('State transition to unregistered state: ' + next_state)
                 self._current_state = next_state
                 if action:
                     action(parameters)
