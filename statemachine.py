@@ -4,10 +4,11 @@ from typing import Iterable, Callable, Dict, Set
 
 class State:
     """
-    A State captures an aspect od the system's history and provides a context
-    for the response of the system to events.
+    A State (an extended state) captures an aspect of the system's history
+    and provides a context for the response of the system to events.
     """
-    def __init__(self, name,
+    def __init__(self,
+                 name: str,
                  entry_action: Callable = None,
                  exit_action: Callable = None,
                  end_state: bool = False,
@@ -35,23 +36,25 @@ class State:
         return 'State object named {0}.'.format(self.name)
 
 
-Event = str
+Event = str  # type: Event represented by a string
 
 
 Response = namedtuple('Response', 'next_state, action, guard_condition')
 
 
+# noinspection PyCallingNonCallable,PyCallingNonCallable,PyCallingNonCallable
 class StateMachine(State):
     """
     An implementation of a FSM (Finite State Machine).
     """
     def __init__(self,
+                 name: str,
                  event_source: Iterable[Event],
                  start_state: State = State('start'),
                  initial_action: Callable = None,
                  end_action: Callable = None
                  ):
-        super().__init__()
+        super().__init__(name)
         self._event_source = event_source
         self._current_state = start_state
         self._initial_action = initial_action
@@ -76,13 +79,15 @@ class StateMachine(State):
         if self._initial_action:
             self._initial_action()
         for event, parameters in self._event_source:
-            next_state, action, guard_condition = self._state_table.get(event).get(self._current_state)
-            if action:
+            required_response = self._state_table.get(event).get(self._current_state)
+            if required_response:
+                next_state, action, guard_condition = required_response
                 if guard_condition and guard_condition():  # guard_condition function supplied which returns True
                     continue
                 self._current_state.do_exit()
                 self._current_state = next_state
-                action(parameters)
+                if action:
+                    action(parameters)
                 self._current_state.do_entry()
             if self._current_state.is_end_state:
                 break
