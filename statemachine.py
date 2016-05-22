@@ -3,6 +3,10 @@ from typing import Iterable, Callable, Dict, Set
 
 
 class State:
+    """
+    A State captures an aspect od the system's history and provides a context
+    for the response of the system to events.
+    """
     def __init__(self, name,
                  entry_action: Callable = None,
                  exit_action: Callable = None,
@@ -33,18 +37,24 @@ class State:
 
 Event = str
 
+
 Response = namedtuple('Response', 'next_state, action, guard_condition')
 
 
 class StateMachine(State):
+    """
+    An implementation of a FSM (Finite State Machine).
+    """
     def __init__(self,
                  event_source: Iterable[Event],
                  start_state: State = State('start'),
+                 initial_action: Callable = None,
                  end_action: Callable = None
                  ):
         super().__init__()
         self._event_source = event_source
         self._current_state = start_state
+        self._initial_action = initial_action
         self._end_action = end_action
         self._states = {start_state}    # type: Set[State]
         self._state_table = {}  # type: Dict[Event, Dict[State, Response]]
@@ -63,6 +73,8 @@ class StateMachine(State):
         self._state_table[event][state] = response
 
     def run(self):
+        if self._initial_action:
+            self._initial_action()
         for event, parameters in self._event_source:
             next_state, action, guard_condition = self._state_table.get(event).get(self._current_state)
             if action:
