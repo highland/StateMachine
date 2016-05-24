@@ -90,21 +90,20 @@ class StateMachine(State):
         self._end_action = end_action
         self._states = {initial_state}  # type: Set[State]
         self._extended_state = {}  # data used by actions and event ignore functions
+        self._started = False
 
     def register_state(self, state: State):
         self._states.add(state)
 
-    def run(self):
-        if self._initial_action:
-            self._initial_action()
-        for event_data in self._event_source:    # RTC (Run-to-Completion) Execution Model
-            next_state = self._current_state.handle_event(*event_data)
-            if next_state:
-                self._current_state = next_state
-            if self._current_state.is_end_state:
-                break
-        if self._end_action:
+    def handle_event(self, event: Event, *parameters) -> 'State':
+        if not self._started:
+            if self._initial_action:
+                self._initial_action()
+            self._started = True
+        self._current_state = self._current_state.handle_event(event, *parameters)
+        if self._current_state.is_end_state and self._end_action:
             self._end_action()
+        return self._current_state
 
     def __repr__(self):
         return 'Finite State Machine object named {0}.'.format(self.name)
