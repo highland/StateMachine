@@ -3,11 +3,10 @@
     Inspired by "A Crash Course in UML State Machines" by Miro Samek, Quantum Leaps, LLC.
     https://classes.soe.ucsc.edu/cmpe013/Spring11/LectureNotes/A_Crash_Course_in_UML_State_Machines.pdf
 """
-from typing import Callable, Dict, Set, NamedTuple
+from typing import Callable, Dict, Set, NamedTuple, Tuple
 
 
-Event = str
-""" type alias:  Event is represented by a string """
+Event = NamedTuple('Event', [('name', str), ('parameters', Tuple)])
 
 Response = NamedTuple('Response',
                       [('next_state', 'State'), ('action', Callable[..., None]),
@@ -41,7 +40,7 @@ class State:
     def add_response(self, event: Event, response: Response):
         self._responses[event] = response
 
-    def handle_event(self, event: Event, *parameters) -> 'State':
+    def handle_event(self, event: Event) -> 'State':
         """
             Finds the required response to an event, and actions it.
         :param event: Event
@@ -58,7 +57,7 @@ class State:
         if self._exit_action:
             self._exit_action()
         if action:
-            action(event, parameters)
+            action(event)
         next_state.do_entry()
         return next_state
 
@@ -100,16 +99,16 @@ class CompositeState(State):
     def register_state(self, state: State):
         self._states.add(state)
 
-    def handle_event(self, event: Event, *parameters) -> 'State':
+    def handle_event(self, event: Event) -> 'State':
         if not self._started:
             if self._initial_action:
                 self._initial_action()
             self._started = True
-        next_state = self._current_state.handle_event(event, *parameters)
+        next_state = self._current_state.handle_event(event)
         if next_state:      # if event was consumed
-            self._current_state = self._current_state.handle_event(event, *parameters)
+            self._current_state = next_state
         else:               # else handle as a simple State
-            return super().handle_event(event, *parameters)
+            return super().handle_event(event)
         if self._current_state.is_end_state and self._end_action:
             self._end_action()
         return self._current_state
