@@ -3,7 +3,7 @@
     Inspired by "A Crash Course in UML State Machines" by Miro Samek, Quantum Leaps, LLC.
     https://classes.soe.ucsc.edu/cmpe013/Spring11/LectureNotes/A_Crash_Course_in_UML_State_Machines.pdf
 """
-from typing import Iterable, Callable, Dict, Set, NamedTuple
+from typing import Callable, Dict, Set, NamedTuple
 
 
 Event = str
@@ -42,6 +42,13 @@ class State:
         self._responses[event] = response
 
     def handle_event(self, event: Event, *parameters) -> 'State':
+        """
+            Finds the required response to an event, and actions it.
+        :param event: Event
+        :param parameters: Dict Event parameters
+        :return: State  The next state that will become the current state of the
+            higher-level context or None if the event is not consumed
+        """
         required_response = self._responses.get(event)
         if not required_response:
             return None
@@ -71,20 +78,18 @@ class State:
 
 
 # noinspection PyCallingNonCallable
-class StateMachine(State):
+class CompositeState(State):
     """
-    An implementation of a FSM (Finite State Machine).
+    An implementation of a Composite State of a HSM (Hierarchical State Machine).
     """
 
     def __init__(self,
                  name: str,
-                 event_source: Iterable[Event],
                  initial_state: State = State('initial'),
                  initial_action: Callable = None,
                  end_action: Callable = None
                  ):
         super().__init__(name)
-        self._event_source = event_source
         self._current_state = initial_state
         self._initial_action = initial_action
         self._end_action = end_action
@@ -100,11 +105,15 @@ class StateMachine(State):
             if self._initial_action:
                 self._initial_action()
             self._started = True
-        self._current_state = self._current_state.handle_event(event, *parameters)
+        next_state = self._current_state.handle_event(event, *parameters)
+        if next_state:      # if event was consumed
+            self._current_state = self._current_state.handle_event(event, *parameters)
+        else:               # else handle as a simple State
+            return super().handle_event(event, *parameters)
         if self._current_state.is_end_state and self._end_action:
             self._end_action()
         return self._current_state
 
     def __repr__(self):
-        return 'Finite State Machine object named {0}.'.format(self.name)
+        return 'Composite State object named {0}.'.format(self.name)
 
