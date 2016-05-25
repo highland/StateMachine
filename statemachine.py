@@ -4,6 +4,7 @@
     https://classes.soe.ucsc.edu/cmpe013/Spring11/LectureNotes/A_Crash_Course_in_UML_State_Machines.pdf
 """
 from typing import Callable, Dict, Set, NamedTuple, Tuple
+from collections import defaultdict
 
 
 Event = NamedTuple('Event', [('name', str), ('parameters', Tuple)])
@@ -30,15 +31,14 @@ class State:
                  exit_action: Callable = None,
                  end_state: bool = False,
                  ):
-        super().__init__()
         self.name = name
         self._entry_action = entry_action
         self._exit_action = exit_action
         self.is_end_state = end_state
-        self._responses = {}    # type: Dict[Event, Response]
+        self._responses = defaultdict(list)    # type: Dict[Event, list[Response]]
 
     def add_response(self, event: Event, response: Response):
-        self._responses[event] = response
+        self._responses.get(event).append(response)
 
     def handle_event(self, event: Event) -> 'State':
         """
@@ -48,18 +48,19 @@ class State:
         :return: State  The next state that will become the current state of the
             higher-level context or None if the event is not consumed
         """
-        required_response = self._responses.get(event)
-        if not required_response:
-            return None
-        next_state, action, guard_condition = required_response
-        if guard_condition and not guard_condition():  # guard_condition function supplied which returns False
-            return None
-        if self._exit_action:
-            self._exit_action()
-        if action:
-            action(event)
-        next_state.do_entry()
-        return next_state
+        potential_responses = self._responses.get(event)
+        next_state = None
+        for required_response in potential_responses:
+            next_state, action, guard_condition = required_response
+            if guard_condition and not guard_condition():  # guard_condition function supplied which returns False
+                next_state = None
+                continue
+            if self._exit_action:
+                self._exit_action()
+            if action:
+                action(event)
+            next_state.do_entry()
+            return next_state
 
     def do_entry(self):
         if self._entry_action:
@@ -84,16 +85,17 @@ class CompositeState(State):
 
     def __init__(self,
                  name: str,
+                 entry_action: Callable = None,
+                 exit_action: Callable = None,
                  initial_state: State = State('initial'),
                  initial_action: Callable = None,
                  end_action: Callable = None
                  ):
-        super().__init__(name)
+        super().__init__(name, entry_action, exit_action)
         self._current_state = initial_state
         self._initial_action = initial_action
         self._end_action = end_action
         self._states = {initial_state}  # type: Set[State]
-        self._extended_state = {}  # data used by actions and event ignore functions
         self._started = False
 
     def register_state(self, state: State):
@@ -116,3 +118,5 @@ class CompositeState(State):
     def __repr__(self):
         return 'Composite State object named {0}.'.format(self.name)
 
+StateMachine = CompositeState
+# type alias for top-level context
