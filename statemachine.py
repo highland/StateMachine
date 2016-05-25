@@ -3,7 +3,7 @@
     Inspired by "A Crash Course in UML State Machines" by Miro Samek, Quantum Leaps, LLC.
     https://classes.soe.ucsc.edu/cmpe013/Spring11/LectureNotes/A_Crash_Course_in_UML_State_Machines.pdf
 """
-from typing import Callable, Dict, Set, NamedTuple, Tuple
+from typing import Callable, Dict, List, Set, NamedTuple
 from collections import defaultdict
 
 
@@ -17,6 +17,9 @@ class Event:
 
     def __eq__(self, other):
         return self.name == other.name
+
+    def __repr__(self):
+        return 'Event object named {0}.'.format(self.name)
 
 
 Response = NamedTuple('Response',
@@ -45,7 +48,7 @@ class State:
         self._entry_action = entry_action
         self._exit_action = exit_action
         self.is_end_state = end_state
-        self._responses = defaultdict(list)    # type: Dict[Event, list[Response]]
+        self._responses = defaultdict(list)  # type: Dict[Event, List[Response]]
 
     def add_response(self, event: Event, response: Response):
         """
@@ -62,7 +65,6 @@ class State:
             Assumes guard conditions for an event are mutually exclusive, so only actions the first
             response that succeeds.
         :param event: Event
-        :param parameters: Dict Event parameters
         :return: State  The next state that will become the current state of the
             higher-level context or None if the event is not consumed
         """
@@ -73,12 +75,12 @@ class State:
             if guard_condition and not guard_condition():  # guard_condition function supplied which returns False
                 next_state = None
                 continue
-            if self._exit_action:
-                self._exit_action()
+            self.do_exit()
             if action:
                 action(event)
             next_state.do_entry()
-            return next_state
+            break
+        return next_state
 
     def do_entry(self):
         if self._entry_action:
@@ -125,16 +127,17 @@ class CompositeState(State):
                 self._initial_action()
             self._started = True
         next_state = self._current_state.handle_event(event)
-        if next_state:      # if event was consumed
+        if not next_state:  # if event was not consumed - pass up the tree
+            next_state = super().handle_event(event)
+        else:
             self._current_state = next_state
-        else:               # else handle as a simple State
-            return super().handle_event(event)
-        if self._current_state.is_end_state and self._end_action:
-            self._end_action()
-        return self._current_state
+            if self._current_state.is_end_state and self._end_action:
+                self._end_action()
+        return next_state
 
     def __repr__(self):
         return 'Composite State object named {0}.'.format(self.name)
+
 
 StateMachine = CompositeState
 # type alias for top-level context
