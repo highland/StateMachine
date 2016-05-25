@@ -7,7 +7,17 @@ from typing import Callable, Dict, Set, NamedTuple, Tuple
 from collections import defaultdict
 
 
-Event = NamedTuple('Event', [('name', str), ('parameters', Tuple)])
+class Event:
+    """
+    An event that triggers a response in the state machine
+    """
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def __eq__(self, other):
+        return self.name == other.name
+
 
 Response = NamedTuple('Response',
                       [('next_state', 'State'), ('action', Callable[..., None]),
@@ -38,11 +48,19 @@ class State:
         self._responses = defaultdict(list)    # type: Dict[Event, list[Response]]
 
     def add_response(self, event: Event, response: Response):
+        """
+            Add a response to action when an event happens in this state.
+        :param event: Event
+        :param response: Response
+        :return: None
+        """
         self._responses.get(event).append(response)
 
     def handle_event(self, event: Event) -> 'State':
         """
-            Finds the required response to an event, and actions it.
+            Finds a required response to an event, and actions it if the associated guard condition is True.
+            Assumes guard conditions for an event are mutually exclusive, so only actions the first
+            response that succeeds.
         :param event: Event
         :param parameters: Dict Event parameters
         :return: State  The next state that will become the current state of the
