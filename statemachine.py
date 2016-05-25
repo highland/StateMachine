@@ -23,10 +23,9 @@ class Event:
 
 
 Response = NamedTuple('Response',
-                      [('next_state', 'State'), ('action', Callable[..., None]),
-                       ('guard_condition', Callable[..., bool])])
+                      [('next_state', 'State'), ('action', Callable[Event, None]),
+                       ('guard_condition', Callable[Event, bool])])
 """
-    action may optionally take parameters supplied with the event
     guard_condition should return False if the transition is to be disabled
 """
 
@@ -72,7 +71,7 @@ class State:
         next_state = None
         for required_response in potential_responses:
             next_state, action, guard_condition = required_response
-            if guard_condition and not guard_condition():  # guard_condition function supplied which returns False
+            if guard_condition and not guard_condition(event):  # guard_condition function supplied which returns False
                 next_state = None
                 continue
             self.do_exit()
